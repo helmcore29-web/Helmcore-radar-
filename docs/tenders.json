@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "id": "dd0540860bb4b4fd",
+    "source": "ÚVO / EVO",
+    "title": "Zníženie energetickej náročnosti ZŠ Staničná",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/566513?cHash=42787f7b30df492b4aec374f6e180c64",
+    "score": 78,
+    "estimated_value_eur": 0.0,
+    "location": "Košice / okolie",
+    "summary": "Zníženie energetickej náročnosti ZŠ Staničná | Základná škola Staničná 13, Košice | Stavebné práce | Košický kraj | 22.11.2026 |  |  |  | EVO",
+    "helmcore_advantage": "Zhoda lokality (KE/PO kraj) a kľúčových slov elektro / VTZ.",
+    "risks": "AI vyhodnotenie bolo nedostupné – overiť rozpočet a lehotu na portáli.",
+    "deadline": "Podľa portálu",
+    "found_at": "2026-11-22 21:38"
+  },
+  {
+    "id": "9d3031807b9c02ce",
+    "source": "ÚVO / EVO",
+    "title": "LESNÝ AREÁL GRAJNÁR",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/567407?cHash=698cb77fc4593b01fdb0db923dbd8ad0",
+    "score": 78,
+    "estimated_value_eur": 0.0,
+    "location": "Košice / okolie",
+    "summary": "LESNÝ AREÁL GRAJNÁR | Mesto Spišská Nová Ves | Stavebné práce | Košický kraj | 20.11.2026 |  |  |  | EVO",
+    "helmcore_advantage": "Zhoda lokality (KE/PO kraj) a kľúčových slov elektro / VTZ.",
+    "risks": "AI vyhodnotenie bolo nedostupné – overiť rozpočet a lehotu na portáli.",
+    "deadline": "Podľa portálu",
+    "found_at": "2026-11-22 21:38"
+  },
+  {
+    "id": "bc49ffbdb73a68fd",
+    "source": "ÚVO / EVO",
+    "title": "Múzeum Trebišov– rekonštrukcia čeľadníka",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/566542?cHash=135ae1ca3bb38beadb5a09d4870d0248",
+    "score": 78,
+    "estimated_value_eur": 0.0,
+    "location": "Košice / okolie",
+    "summary": "Múzeum Trebišov– rekonštrukcia čeľadníka | Múzeum a kultúrne centrum Južného Zemplína | Stavebné práce na objektoch historických pamiatok alebo pamätníkov | Košický kraj | 20.11.2026 |  |  |  | EVO",
+    "helmcore_advantage": "Zhoda lokality (KE/PO kraj) a kľúčových slov elektro / VTZ.",
+    "risks": "AI vyhodnotenie bolo nedostupné – overiť rozpočet a lehotu na portáli.",
+    "deadline": "Podľa portálu",
+    "found_at": "2026-11-22 21:38"
+  }
+]
