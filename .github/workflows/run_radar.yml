@@ -1,4 +1,43 @@
-<!DOCTYPE html>
+name: HelMcore Tender Radar
+
+on:
+  schedule:
+    - cron: '30 6,13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan-tenders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Načítať repozitár
+        uses: actions/checkout@v4
+
+      - name: Nastaviť Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Nainštalovať knižnice a prehliadač
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Spustiť vyhľadávanie a Gemini AI analýzu
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scraper.py
+
+      - name: Uložiť nové zákazky na webovú stránku
+        run: |
+          git config --local user.email "bot@helmcore.sk"
+          git config --local user.name "HelMcore Radar Bot"
+          git add docs/tenders.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Aktualizácia zákaziek" && git push)<!DOCTYPE html>
 <html lang="sk">
 <head>
   <meta charset="UTF-8" />
