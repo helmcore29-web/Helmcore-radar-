@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HelMcore s.r.o. | Radar verejných zákaziek</title>
+  <title>HelMcore s.r.o. | Tender Radar</title>
   <style>
     :root {
       --bg: #0f172a;
-      --card: #1e293b;
+      --card: rgba(30, 41, 59, 0.92);
       --border: #334155;
       --text: #f8fafc;
       --muted: #94a3b8;
@@ -15,111 +15,271 @@
       --green: #10b981;
       --red: #ef4444;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 20px; max-width: 1100px; margin: 0 auto; }
-    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px; gap: 12px; }
-    h1 { font-size: 1.4rem; letter-spacing: 0.5px; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.5;
+      padding: 16px;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Vodoznak loga v strede pozadia */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 75vw;
+      max-width: 420px;
+      height: 75vw;
+      max-height: 420px;
+      background: url('logo.png') no-repeat center center;
+      background-size: contain;
+      opacity: 0.07;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    header {
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+
+    .brand-logo {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      flex-shrink: 0;
+      border-radius: 8px;
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
     h1 span { color: var(--accent); }
-    .badge-info { font-size: 0.85rem; color: var(--muted); }
-    .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-    input, select { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-size: 0.95rem; }
-    input { flex: 1; min-width: 220px; }
-    .grid { display: grid; gap: 16px; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; transition: border-color 0.2s; }
-    .card:hover { border-color: var(--accent); }
-    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
-    .score { background: rgba(16, 185, 129, 0.15); color: var(--green); border: 1px solid var(--green); padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
-    .source { background: #334155; color: #e2e8f0; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; margin-right: 8px; }
-    .title { font-size: 1.1rem; font-weight: 600; line-height: 1.4; margin-top: 6px; }
-    .meta { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.9rem; color: var(--muted); margin: 12px 0; padding: 10px; background: rgba(15, 23, 42, 0.5); border-radius: 8px; }
-    .meta strong { color: var(--text); }
-    .summary { font-size: 0.95rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 10px; }
-    .advantage { font-size: 0.88rem; color: var(--green); margin-bottom: 6px; }
-    .risk { font-size: 0.88rem; color: #fca5a5; margin-bottom: 14px; }
-    .btn { display: inline-block; background: var(--accent); color: #0f172a; font-weight: 700; text-decoration: none; padding: 9px 16px; border-radius: 8px; font-size: 0.9rem; }
-    .empty { text-align: center; padding: 40px; color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .counter {
+      font-size: 0.85rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    input, select {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(4px);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .source-badge {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .score-badge {
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .meta {
+      font-size: 0.88rem;
+      margin-bottom: 10px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .summary {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(51, 65, 85, 0.6);
+    }
+
+    .pros-cons {
+      font-size: 0.86rem;
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #7f1d1d;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-align: center;
+      width: 100%;
+    }
+
+    .btn:hover { background: #991b1b; }
+    .empty { text-align: center; color: var(--muted); padding: 30px 0; }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1><span>HelMcore</span> s.r.o. – Tender Radar</h1>
-      <div class="badge-info">Filter: Východné Slovensko (KE/PO kraj) | Nad 5 000 € bez DPH | JOSEPHINE + ÚVO</div>
+  <div class="container">
+    <header>
+      <div class="brand-row">
+        <img src="logo.png" alt="HelMcore" class="brand-logo" onerror="this.style.display='none'">
+        <h1><span>HelMcore</span> s.r.o. – Tender Radar</h1>
+      </div>
+      <div class="subtitle">Filter: Východné Slovensko (KE/PO kraj) | Nad 5 000 € bez DPH | JOSEPHINE + ÚVO + B2B</div>
+      <div class="counter" id="counter">Načítavam zákazky...</div>
+    </header>
+
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="Hľadať (napr. Prešov, rozvádzač, EPS, blesk)..." />
+      <select id="sourceFilter">
+        <option value="ALL">Všetky zdroje</option>
+        <option value="JOSEPHINE">Len JOSEPHINE</option>
+        <option value="ÚVO / EVO">Len ÚVO / EVO</option>
+        <option value="B2B / Subdodávka">Len B2B / Subdodávky</option>
+      </select>
     </div>
-    <div id="count" class="badge-info">Načítavam...</div>
-  </header>
 
-  <div class="controls">
-    <input type="text" id="search" placeholder="Hľadať (napr. Prešov, rozvádzač, EPS, bleskozvod)..." />
-    <select id="sourceFilter">
-      <option value="ALL">Všetky zdroje</option>
-      <option value="JOSEPHINE">Len JOSEPHINE</option>
-      <option value="ÚVO">Len ÚVO</option>
-    </select>
+    <div id="list"></div>
   </div>
-
-  <div id="list" class="grid"></div>
 
   <script>
     let allTenders = [];
 
     function formatEur(val) {
       if (!val || val <= 0) return "Neuvedená (odhad > 5 000 €)";
-      return new Intl.NumberFormat("sk-SK").format(val) + " € bez DPH";
+      return Number(val).toLocaleString("sk-SK") + " € bez DPH";
     }
 
     function render() {
-      const q = document.getElementById("search").value.toLowerCase();
+      const q = document.getElementById("searchInput").value.toLowerCase().trim();
       const src = document.getElementById("sourceFilter").value;
       const list = document.getElementById("list");
 
       const filtered = allTenders.filter(t => {
-        const matchSrc = src === "ALL" || t.source === src;
-        const matchText = !q ||
-          t.title.toLowerCase().includes(q) ||
-          t.location.toLowerCase().includes(q) ||
-          t.summary.toLowerCase().includes(q);
-        return matchSrc && matchText;
+        if (src !== "ALL" && t.source !== src) return false;
+        if (!q) return true;
+        const hay = `${t.title} ${t.location} ${t.summary} ${t.source}`.toLowerCase();
+        return hay.includes(q);
       });
 
-      document.getElementById("count").textContent = `Zobrazených: ${filtered.length} zákaziek`;
+      document.getElementById("counter").textContent = `Zobrazených: ${filtered.length} zákaziek`;
 
-      if (filtered.length === 0) {
-        list.innerHTML = `<div class="empty">Zatiaľ žiadne zákazky zodpovedajúce filtru. Systém kontroluje portály každý deň o 7:30 a 14:30.</div>`;
+      if (!filtered.length) {
+        list.innerHTML = `<div class="empty">Žiadne zákazky nezodpovedajú zvolenému filtru.</div>`;
         return;
       }
 
       list.innerHTML = filtered.map(t => `
         <div class="card">
           <div class="card-top">
-            <div>
-              <span class="source">${t.source}</span>
-              <span style="font-size:0.8rem; color:#94a3b8;">Pridané: ${t.found_at}</span>
-              <div class="title">${t.title}</div>
-            </div>
-            <div class="score">Zhoda ${t.score} %</div>
+            <div><span class="source-badge">${t.source}</span> &nbsp;|&nbsp; Pridané: ${t.found_at || "-"}</div>
+            <div class="score-badge">Zhoda ${t.score} %</div>
           </div>
+          <div class="card-title">${t.title}</div>
           <div class="meta">
             <div>📍 Lokalita: <strong>${t.location}</strong></div>
             <div>💶 Hodnota: <strong>${formatEur(t.estimated_value_eur)}</strong></div>
-            <div>⏳ Termín: <strong>${t.deadline}</strong></div>
+            <div>⏳ Termín: <strong>${t.deadline || "Podľa portálu"}</strong></div>
           </div>
           <div class="summary">${t.summary}</div>
-          <div class="advantage">✅ Výhoda: ${t.helmcore_advantage}</div>
-          <div class="risk">⚠️ Riziká: ${t.risks}</div>
-          <a class="btn" href="${t.url}" target="_blank" rel="noopener">Otvoriť podklady na portáli →</a>
+          <div class="pros-cons">
+            <div>✅ <strong>Výhoda:</strong> ${t.helmcore_advantage}</div>
+            <div>⚠️ <strong>Riziká:</strong> ${t.risks}</div>
+          </div>
+          <a href="${t.url}" target="_blank" rel="noopener" class="btn">Otvoriť podklady na portáli →</a>
         </div>
       `).join("");
     }
 
-    fetch("tenders.json?t=" + Date.now())
+    fetch("tenders.json?v=" + Date.now())
       .then(r => r.json())
-      .then(data => { allTenders = data; render(); })
+      .then(data => {
+        allTenders = data.filter(item => item.source !== "Daibau.sk");
+        render();
+      })
       .catch(() => {
-        document.getElementById("list").innerHTML = `<div class="empty">Databáza zákaziek čaká na prvé spustenie skriptu.</div>`;
+        document.getElementById("counter").textContent = "Chyba načítania dát.";
       });
 
-    document.getElementById("search").addEventListener("input", render);
+    document.getElementById("searchInput").addEventListener("input", render);
     document.getElementById("sourceFilter").addEventListener("change", render);
   </script>
 </body>
