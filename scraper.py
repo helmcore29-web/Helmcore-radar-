@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 import hashlib
 import time
@@ -49,6 +50,13 @@ class SingleEvaluation(BaseModel):
 
 class BatchEvaluation(BaseModel):
     items: list[SingleEvaluation]
+
+
+def sync_logo_to_docs():
+    os.makedirs("docs", exist_ok=True)
+    if os.path.exists("logo.png"):
+        shutil.copy2("logo.png", "docs/logo.png")
+        print("Logo skopírované do docs/logo.png")
 
 
 def load_existing_tenders() -> list:
@@ -105,7 +113,7 @@ def detect_east_location(text: str) -> str | None:
 
 def fetch_josephine_tenders() -> list:
     results = []
-    print("1/5 Sťahujem JOSEPHINE (Proebiz)...")
+    print("1/4 Sťahujem JOSEPHINE (Proebiz)...")
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -139,14 +147,10 @@ def fetch_josephine_tenders() -> list:
 
 def fetch_uvo_and_evo_tenders() -> list:
     results = []
-    print("2/5 Sťahujem ÚVO / EVO...")
+    print("2/4 Sťahujem ÚVO / EVO...")
     cpv_codes = [
-        "45310000-3",  # Elektroinštalačné práce
-        "45311000-0",  # Elektrické vedenia a montážne práce
-        "45312000-7",  # Poplachové a anténne systémy (EPS, EZS)
-        "45315000-8",  # Elektrické rozvádzače a prípojky
-        "45316000-5",  # Inštalácia osvetľovacích a signalizačných systémov
-        "09331200-0"   # Solárne fotovoltické moduly (FTV)
+        "45310000-3", "45311000-0", "45312000-7",
+        "45315000-8", "45316000-5", "09331200-0"
     ]
     try:
         for cpv in cpv_codes:
@@ -175,7 +179,7 @@ def fetch_uvo_and_evo_tenders() -> list:
 
 def fetch_eks_and_ezak_tenders() -> list:
     results = []
-    print("3/5 Sťahujem EKS Trhovisko a E-ZAK profily (KE/PO inštitúcie)...")
+    print("3/4 Sťahujem EKS Trhovisko a E-ZAK profily...")
     try:
         resp_eks = requests.get("https://www.eks.sk/VerejneZakazky", timeout=20, headers={"User-Agent": "Mozilla/5.0"})
         if resp_eks.status_code == 200:
@@ -194,7 +198,6 @@ def fetch_eks_and_ezak_tenders() -> list:
     except Exception as e:
         print(f"Chyba EKS: {e}")
 
-    # E-ZAK profily veľkých zadávateľov na východe (univerzity, nemocnice, vodárne, teplárne, železnice)
     ezak_portals = [
         ("E-ZAK TUKE", "https://zakazky.tuke.sk/vz/"),
         ("E-ZAK UPJŠ", "https://zakazky.upjs.sk/vz/"),
@@ -228,7 +231,7 @@ def fetch_eks_and_ezak_tenders() -> list:
 
 def fetch_slovak_b2b_and_construction() -> list:
     results = []
-    print("4/5 Prehľadávam Tendernet, ProfiTender, JOSEPHINE SK a stavebné zámery...")
+    print("4/4 Prehľadávam Tendernet, ProfiTender, JOSEPHINE SK a stavebné zámery...")
     queries = [
         'site:josephine.proebiz.com/sk/public-tender "Košice" OR "Prešov" OR "Poprad" "elektro" OR "rozvádzač" OR "osvetlenie"',
         'site:tendernet.sk "Košice" OR "Prešov" OR "východné Slovensko" "elektro" OR "fotovoltika" OR "rozvádzač"',
@@ -381,6 +384,7 @@ def send_telegram_notification(tender: dict):
 
 
 def main():
+    sync_logo_to_docs()
     if not GEMINI_API_KEY:
         print("UPOZORNENIE: Chýba GEMINI_API_KEY v GitHub Secrets!")
     client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
@@ -409,7 +413,7 @@ def main():
             c["id"] = tid
             filtered_candidates.append(c)
 
-    print(f"5/5 Vybraných {len(filtered_candidates)} kandidátov na hĺbkovú analýzu.")
+    print(f"Vybraných {len(filtered_candidates)} kandidátov na hĺbkovú analýzu.")
 
     to_analyze = filtered_candidates[:60]
     for item in to_analyze:
