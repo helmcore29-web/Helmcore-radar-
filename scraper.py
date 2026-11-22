@@ -246,7 +246,7 @@ def evaluate_with_gemini(client: genai.Client, item: dict, detail_text: str) -> 
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
