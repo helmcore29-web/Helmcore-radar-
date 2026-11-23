@@ -136,31 +136,30 @@ def fetch_josephine() -> list:
     results = []
     print("1/6 Sťahujem JOSEPHINE (Proebiz)...")
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            page.goto("https://josephine.proebiz.com/sk/public-tenders/all", timeout=45000, wait_until="networkidle")
-            page.wait_for_timeout(4000)
-
+        resp = requests.get(
+            "https://josephine.proebiz.com/sk/public-tenders/all",
+            timeout=25,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        )
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
             seen = set()
-            for link in page.query_selector_all("a"):
-                href = link.get_attribute("href") or ""
-                if "public-tender" not in href or "public-tenders" in href:
-                    continue
-                full_url = href if href.startswith("http") else f"https://josephine.proebiz.com{href}"
-                if full_url in seen:
-                    continue
-                seen.add(full_url)
-                row_text = link.inner_text().strip()
-                title = row_text.split("\n")[0][:180]
-                if len(title) > 6:
-                    results.append({
-                        "source": "JOSEPHINE",
-                        "title": title,
-                        "raw_text": row_text[:400],
-                        "url": full_url
-                    })
-            browser.close()
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                if "public-tender" in href and "public-tenders" not in href:
+                    full_url = href if href.startswith("http") else f"https://josephine.proebiz.com{href}"
+                    if full_url in seen:
+                        continue
+                    seen.add(full_url)
+                    parent_txt = a.parent.get_text(" ", strip=True) if a.parent else a.get_text(" ", strip=True)
+                    title = a.get_text(" ", strip=True)[:180]
+                    if len(title) > 6:
+                        results.append({
+                            "source": "JOSEPHINE",
+                            "title": title,
+                            "raw_text": parent_txt[:400],
+                            "url": full_url
+                        })
     except Exception as e:
         print(f"   Chyba JOSEPHINE: {e}")
     print(f"   -> JOSEPHINE: {len(results)}")
@@ -262,34 +261,30 @@ def fetch_free_portals_search() -> list:
     results = []
     print("5/6 Prehľadávam CEZ, eZakazky, JOSEPHINE SK a Enviroportál...")
     queries = [
-        ('JOSEPHINE', 'site:josephine.proebiz.com ("Košice" OR "Prešov" OR "Poprad" OR "Michalovce" OR "Humenné") ("elektro" OR "rozvádzač" OR "osvetlenie" OR "bleskozvod" OR "fotovolt")'),
-        ('CEZ Portál', 'site:cez.sk ("Košice" OR "Prešov" OR "Poprad" OR "Košický" OR "Prešovský") ("elektroinštal" OR "rozvádzač" OR "osvetlenie" OR "revízi")'),
-        ('eZakazky.sk', 'site:ezakazky.sk ("Košice" OR "Prešov" OR "Poprad" OR "Michalovce" OR "Trebišov") ("elektro" OR "osvetlenie" OR "fotovolt" OR "rekonštrukcia")'),
-        ('IS EBE', 'site:isebe.sk ("Košice" OR "Prešov" OR "Poprad") ("elektro" OR "osvetlenie" OR "rozvádzač")'),
-        ('Enviroportál EIA', 'site:enviroportal.sk ("Košice" OR "Prešov" OR "Valaliky" OR "Poprad") ("výrobná hala" OR "skladová hala" OR "fotovoltická" OR "bytový dom") 2026')
+        ('JOSEPHINE', 'site:josephine.proebiz.com Košice Prešov elektro OR osvetlenie OR rozvádzač'),
+        ('CEZ Portál', 'site:cez.sk Košice Prešov elektro OR rozvádzač OR osvetlenie'),
+        ('eZakazky.sk', 'site:ezakazky.sk Košice Prešov elektro OR osvetlenie OR rekonštrukcia'),
+        ('Enviroportál EIA', 'site:enviroportal.sk Košice Prešov hala OR fotovoltická 2026')
     ]
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            page = context.new_page()
             for src_name, q in queries:
-                search_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(q)}"
+                search_url = f"https://lite.duckduckgo.com/lite/?q={requests.utils.quote(q)}"
                 page.goto(search_url, timeout=25000)
-                page.wait_for_timeout(2000)
-                for res in page.query_selector_all(".result"):
-                    title_el = res.query_selector(".result__a")
-                    snippet_el = res.query_selector(".result__snippet")
-                    if title_el:
-                        title = title_el.inner_text().strip()
-                        href = title_el.get_attribute("href") or ""
-                        snippet = snippet_el.inner_text().strip() if snippet_el else ""
-                        if href.startswith("http"):
-                            results.append({
-                                "source": src_name,
-                                "title": title[:180],
-                                "raw_text": f"{title} - {snippet}",
-                                "url": href
-                            })
+                page.wait_for_timeout(2500)
+                for a in page.query_selector_all("a.result-link"):
+                    title = a.inner_text().strip()
+                    href = a.get_attribute("href") or ""
+                    if href.startswith("http") and len(title) > 8:
+                        results.append({
+                            "source": src_name,
+                            "title": title[:180],
+                            "raw_text": title,
+                            "url": href
+                        })
             browser.close()
     except Exception as e:
         print(f"   Chyba vyhľadávania free portálov: {e}")
@@ -363,7 +358,9 @@ def evaluate_batch_with_gemini(client: genai.Client, batch: list[dict]) -> list[
     entries = [f"[{idx}] ZDROJ: {item['source']} | NÁZOV: {item['title']} | TEXT: {item['detail']}" for idx, item in enumerate(batch)]
     user_prompt = "Vyhodnoť nasledujúce položky:\n\n" + "\n---\n".join(entries)
 
-    for model_name in ["gemini-3.5-flash", "gemini-3.5-flash-lite"]:
+    # 5 pokusov s čakaním, ak je server dočasne preťažený (503)
+    for attempt in range(5):
+        model_name = "gemini-3.5-flash" if attempt % 2 == 0 else "gemini-3.5-flash-lite"
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -379,8 +376,8 @@ def evaluate_batch_with_gemini(client: genai.Client, batch: list[dict]) -> list[
             print(f"AI analýza úspešná cez {model_name}.")
             return parsed.items
         except Exception as e:
-            print(f"Model {model_name} nedostupný ({e})")
-            time.sleep(2)
+            print(f"Pokus {attempt + 1}/5 ({model_name}) zlyhal: {e}")
+            time.sleep(15)
 
     return smart_local_evaluation(batch)
 
