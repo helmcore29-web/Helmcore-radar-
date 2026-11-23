@@ -19,7 +19,6 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# Silné kľúčové slová priamo pre elektro / VTZ / slaboprúd / FTV
 PRIMARY_ELECTRO = [
     "elektroinštal", "elektromontáž", "rozvádzač", "silnoprúd", "slaboprúd",
     "bleskozvod", "uzemnen", "fotovolt", "ftv", "eps", "požiarna signalizácia",
@@ -28,13 +27,11 @@ PRIMARY_ELECTRO = [
     "meranie a regulácia", "mar ", "verejné osvetlenie", "rekonštrukcia osvetlenia"
 ]
 
-# Sekundárne slová (veľké stavby, kde treba elektro subdodávku)
 SECONDARY_BUILDING = [
     "výrobná hala", "skladová hala", "bytový dom", "rekonštrukcia objektu",
     "zníženie energetickej náročnosti", "modernizácia budovy", "novostavba"
 ]
 
-# Vylučovacie slová (čisto stavebné/cestné práce bez elektra)
 EXCLUDE_KEYWORDS = [
     "oprava výtlkov", "vodorovné dopravné značenie", "kosenie", "zimná údržba",
     "dodávka potravín", "stravovanie", "upratovacie služby", "kancelársky papier",
@@ -55,7 +52,7 @@ EAST_LOCATIONS = {
     "stropkov": "Stropkov", "krompach": "Krompachy", "sečovc": "Sečovce",
     "strážsk": "Strážske", "veľké kapušan": "Veľké Kapušany", "kráľovský chlmec": "Kráľovský Chlmec",
     "sobranc": "Sobrance", "medzilaborc": "Medzilaborce", "lipan": "Lipany",
-    "svit": "Svit", "vysoké tatry": "Vysoké Tatry", "lečov": "Levoča", "levoča": "Levoča",
+    "svit": "Svit", "vysoké tatry": "Vysoké Tatry", "levoča": "Levoča", "levoca": "Levoča",
     "dobšin": "Dobšiná", "košický kraj": "Košický kraj", "kosicky kraj": "Košický kraj",
     "prešovský kraj": "Prešovský kraj", "presovsky kraj": "Prešovský kraj",
     "tuke": "Košice (TUKE)", "upjš": "Košice (UPJŠ)", "unlp": "Košice (UNLP)",
@@ -91,6 +88,7 @@ def sync_logo_to_docs():
     os.makedirs("docs", exist_ok=True)
     if os.path.exists("logo.png"):
         shutil.copy2("logo.png", "docs/logo.png")
+        print("Logo skopírované do docs/logo.png")
 
 
 def load_existing_tenders() -> list:
@@ -134,7 +132,6 @@ def extract_deadline(text: str) -> str:
     return m.group(1) if m else "Podľa portálu"
 
 
-# 1. JOSEPHINE (Proebiz) - priame načítanie verejných zákaziek
 def fetch_josephine() -> list:
     results = []
     print("1/6 Sťahujem JOSEPHINE (Proebiz)...")
@@ -142,17 +139,18 @@ def fetch_josephine() -> list:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            page.goto("https://josephine.proebiz.com/sk/public-tenders/all", timeout=45000)
-            page.wait_for_selector("a[href*='/public-tender/']", timeout=15000)
-            page.wait_for_timeout(2500)
+            page.goto("https://josephine.proebiz.com/sk/public-tenders/all", timeout=45000, wait_until="networkidle")
+            page.wait_for_timeout(4000)
 
             seen = set()
-            for link in page.query_selector_all("a[href*='/public-tender/']"):
-                href = link.get_attribute("href")
-                if not href or href in seen:
+            for link in page.query_selector_all("a"):
+                href = link.get_attribute("href") or ""
+                if "public-tender" not in href or "public-tenders" in href:
                     continue
-                seen.add(href)
                 full_url = href if href.startswith("http") else f"https://josephine.proebiz.com{href}"
+                if full_url in seen:
+                    continue
+                seen.add(full_url)
                 row_text = link.inner_text().strip()
                 title = row_text.split("\n")[0][:180]
                 if len(title) > 6:
@@ -169,7 +167,6 @@ def fetch_josephine() -> list:
     return results
 
 
-# 2. ÚVO + IS EVO (podľa elektro CPV kódov)
 def fetch_uvo_evo() -> list:
     results = []
     print("2/6 Sťahujem ÚVO a IS EVO...")
@@ -203,7 +200,6 @@ def fetch_uvo_evo() -> list:
     return results
 
 
-# 3. EKS Trhovisko (Elektronický kontraktačný systém)
 def fetch_eks() -> list:
     results = []
     print("3/6 Sťahujem EKS Trhovisko...")
@@ -228,7 +224,6 @@ def fetch_eks() -> list:
     return results
 
 
-# 4. E-ZAK profily východoslovenských inštitúcií (TUKE, UPJŠ, UNLP, VVS, ŽSR, TEKO)
 def fetch_ezak_east() -> list:
     results = []
     print("4/6 Sťahujem E-ZAK profily (TUKE, UPJŠ, UNLP, VVS, ŽSR)...")
@@ -263,12 +258,11 @@ def fetch_ezak_east() -> list:
     return results
 
 
-# 5. CEZ, IS EBE / eZakazky.sk a priame hľadanie cez DuckDuckGo (len free verejné portály)
 def fetch_free_portals_search() -> list:
     results = []
     print("5/6 Prehľadávam CEZ, eZakazky, JOSEPHINE SK a Enviroportál...")
     queries = [
-        ('JOSEPHINE', 'site:josephine.proebiz.com/sk/public-tender ("Košice" OR "Prešov" OR "Poprad" OR "Michalovce" OR "Humenné" OR "Spišská") ("elektro" OR "rozvádzač" OR "osvetlenie" OR "bleskozvod" OR "fotovolt")'),
+        ('JOSEPHINE', 'site:josephine.proebiz.com ("Košice" OR "Prešov" OR "Poprad" OR "Michalovce" OR "Humenné") ("elektro" OR "rozvádzač" OR "osvetlenie" OR "bleskozvod" OR "fotovolt")'),
         ('CEZ Portál', 'site:cez.sk ("Košice" OR "Prešov" OR "Poprad" OR "Košický" OR "Prešovský") ("elektroinštal" OR "rozvádzač" OR "osvetlenie" OR "revízi")'),
         ('eZakazky.sk', 'site:ezakazky.sk ("Košice" OR "Prešov" OR "Poprad" OR "Michalovce" OR "Trebišov") ("elektro" OR "osvetlenie" OR "fotovolt" OR "rekonštrukcia")'),
         ('IS EBE', 'site:isebe.sk ("Košice" OR "Prešov" OR "Poprad") ("elektro" OR "osvetlenie" OR "rozvádzač")'),
@@ -369,7 +363,7 @@ def evaluate_batch_with_gemini(client: genai.Client, batch: list[dict]) -> list[
     entries = [f"[{idx}] ZDROJ: {item['source']} | NÁZOV: {item['title']} | TEXT: {item['detail']}" for idx, item in enumerate(batch)]
     user_prompt = "Vyhodnoť nasledujúce položky:\n\n" + "\n---\n".join(entries)
 
-    for model_name in ["gemini-2.5-flash", "gemini-2.5-flash-lite"]:
+    for model_name in ["gemini-3.5-flash", "gemini-3.5-flash-lite"]:
         try:
             response = client.models.generate_content(
                 model=model_name,
