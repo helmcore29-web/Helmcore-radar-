@@ -1,5 +1,33 @@
 [
   {
+    "id": "b1a72521ee5e6116",
+    "source": "ÚVO / EVO",
+    "title": "Výstavba a modernizácia infraštruktúry VOD v meste Bardejov 1. etapa",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/567145?cHash=587102d075ac06a3793b7b829c010763",
+    "score": 78,
+    "estimated_value_eur": 0.0,
+    "location": "Prešov / okolie",
+    "summary": "Výstavba a modernizácia infraštruktúry VOD v meste Bardejov 1. etapa | Mesto Bardejov | Stavebné práce na stavbe parkovísk | Prešovský kraj | 23.11.2026 |  |  |  | EVO",
+    "helmcore_advantage": "Zhoda lokality (KE/PO kraj) a kľúčových slov elektro / VTZ.",
+    "risks": "AI vyhodnotenie bolo nedostupné – overiť rozpočet a lehotu na portáli.",
+    "deadline": "Podľa portálu",
+    "found_at": "2026-11-23 14:42"
+  },
+  {
+    "id": "4922d2c011bf0aef",
+    "source": "ÚVO / EVO",
+    "title": "Zníženie energetickej náročnosti CVČ Domino, Košice",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/562569?cHash=b8ffc1f087fbf6d89776edd149d0b00d",
+    "score": 78,
+    "estimated_value_eur": 0.0,
+    "location": "Košice / okolie",
+    "summary": "Zníženie energetickej náročnosti CVČ Domino, Košice | Mesto Košice | Stavebné práce | Košický kraj | 23.11.2026 |  |  |  | EVO",
+    "helmcore_advantage": "Zhoda lokality (KE/PO kraj) a kľúčových slov elektro / VTZ.",
+    "risks": "AI vyhodnotenie bolo nedostupné – overiť rozpočet a lehotu na portáli.",
+    "deadline": "Podľa portálu",
+    "found_at": "2026-11-23 14:42"
+  },
+  {
     "id": "3fbedd1973dad524",
     "source": "ÚVO / EVO",
     "title": "Stavebné práce pre projekt: „Zvýšenie kvality školskej infraštruktúry v obci Vyšné Ružbachy“",
