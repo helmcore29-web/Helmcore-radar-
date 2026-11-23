@@ -1,5 +1,47 @@
 [
   {
+    "id": "6b69f3cba30b7b86",
+    "source": "ÚVO Vestník",
+    "title": "Trakčná meniareň Valaliky",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/561599?cHash=0a70fdcbfccdcdb33f9c7ac360efcd79",
+    "score": 92,
+    "estimated_value_eur": 2500000.0,
+    "location": "Valaliky",
+    "summary": "Výstavba a inštalácia elektrických rozvodov a zariadení trakčnej meniarne Valaliky pre ŽSR.",
+    "helmcore_advantage": "Blízkosť sídla Košice, expertíza pre VTZ elektrické (§ 23), výrobu NN rozvádzačov a silnoprúdové elektroinštalácie.",
+    "risks": "Špecifické nároky na dráhové úpravy, povolenia a kooperáciu so ŽSR.",
+    "deadline": "Neuvedený",
+    "found_at": "2026-11-23 18:05"
+  },
+  {
+    "id": "1617b660d4dfd296",
+    "source": "IS EVO",
+    "title": "Revitalizácia lokality Hrádok II. etapa",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/568342?cHash=09053257743207b3f3197f9a5cf9c97c",
+    "score": 82,
+    "estimated_value_eur": 250000.0,
+    "location": "Michalovce",
+    "summary": "Revitalizácia lokality Hrádok II. etapa zahŕňajúca inštaláciu vonkajšieho osvetlenia a bezpečnostného kamerového systému (CCTV).",
+    "helmcore_advantage": "Silné know-how a oprávnenia pre dodávku CCTV systémov a exteriérového osvetlenia v domovskom Košickom kraji.",
+    "risks": "Práce na osvetlení a kamerách tvorí len časť zákazky, nutná subdodávateľská spolupráca na terénnych úpravách.",
+    "deadline": "Neuvedený",
+    "found_at": "2026-11-23 18:05"
+  },
+  {
+    "id": "efe36b8e7970a759",
+    "source": "IS EVO",
+    "title": "Výstavba a modernizácia infraštruktúry VOD v meste Bardejov 1. etapa",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/567145?cHash=587102d075ac06a3793b7b829c010763",
+    "score": 75,
+    "estimated_value_eur": 350000.0,
+    "location": "Bardejov",
+    "summary": "Výstavba a modernizácia mestskej infraštruktúry v Bardejove vrátane inštalácie osvetlenia ciest a výstavby parkovísk.",
+    "helmcore_advantage": "Kompletné elektromontážne kapacity pre realizáciu vonkajšieho osvetlenia a prípojok v Prešovskom kraji.",
+    "risks": "Prevládajúci podiel stavebných a cestných prác vyžaduje partnerstvo s hlavným dodávateľom stavby.",
+    "deadline": "Neuvedený",
+    "found_at": "2026-11-23 18:05"
+  },
+  {
     "id": "f41ffaa4acd7a2e7",
     "source": "IS EVO",
     "title": "Zníženie energetickej náročnosti CVČ Domino, Košice",
