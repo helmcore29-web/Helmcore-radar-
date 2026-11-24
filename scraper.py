@@ -13,10 +13,9 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-# Potlačenie varovaní pri štátnych E-ZAK portáloch so špecifickými SSL certifikátmi
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# --- NASTAVENIA PRE HELMCORE S.R.O. ---
+# --- NASTAVENIA PRE HELMCORE S.R.O. (VERZIA V3) ---
 MIN_VALUE_EUR = 5000.0
 DATA_FILE = "docs/tenders.json"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -28,7 +27,6 @@ HEADERS = {
     "Accept-Language": "sk-SK,sk;q=0.9,en;q=0.8"
 }
 
-# Kompletné portfólio HelMcore s.r.o. (silnoprúd, slaboprúd, FTV, optika, bezpečnosť, smart)
 PRIMARY_ELECTRO = [
     "elektroinštal", "elektromontáž", "rozvádzač", "silnoprúd", "slaboprúd",
     "bleskozvod", "hvi ", "uzemnen", "fotovolt", "ftv", "solárn", "menič",
@@ -44,10 +42,11 @@ PRIMARY_ELECTRO = [
 ]
 
 SECONDARY_BUILDING = [
-    "výrobná hala", "skladová hala", "priemyselná hala", "bytový dom",
-    "rekonštrukcia objektu", "rekonštrukcia budovy", "stavebné úpravy",
-    "zníženie energetickej náročnosti", "modernizácia budovy", "novostavba",
-    "rekonštrukcia základnej školy", "rekonštrukcia materskej školy", "domov sociálnych služieb"
+    "výrobná hala", "skladová hala", "priemyselná hala", "logistik", "bytový dom",
+    "rekonštrukcia objektu", "rekonštrukcia budovy", "stavebné úpravy", "zateplenie",
+    "zníženie energetickej náročnosti", "modernizácia budovy", "novostavba", "nadstavba",
+    "rekonštrukcia základnej školy", "rekonštrukcia materskej školy", "domov sociálnych služieb",
+    "zmluva o dielo"
 ]
 
 EXCLUDE_KEYWORDS = [
@@ -55,10 +54,9 @@ EXCLUDE_KEYWORDS = [
     "dodávka potravín", "stravovanie", "upratovacie služby", "kancelársky papier",
     "poistenie", "právne služby", "odvoz odpadu", "osobný automobil",
     "dodávka elektrickej energie", "združená dodávka elektriny", "dodávka plynu",
-    "toner", "zdravotnícky materiál", "lieky", "strážna služba"
+    "toner", "zdravotnícky materiál", "lieky", "strážna služba", "autobus"
 ]
 
-# Košice + ~100 km okruh a celý Košický & Prešovský kraj
 EAST_LOCATIONS = {
     "košic": "Košice", "kosic": "Košice", "šaca": "Košice-Šaca", "saca": "Košice-Šaca",
     "valalik": "Valaliky (KE)", "kechnec": "Kechnec (KE)", "hanisk": "Haniska (KE)",
@@ -116,7 +114,6 @@ def sync_logo_to_docs():
     os.makedirs("docs", exist_ok=True)
     if os.path.exists("logo.png"):
         shutil.copy2("logo.png", "docs/logo.png")
-        print("Logo skopírované do docs/logo.png")
 
 
 def load_existing_tenders() -> list:
@@ -134,7 +131,7 @@ def save_tenders(tenders: list):
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     tenders.sort(key=lambda x: (x.get("found_at", ""), x.get("score", 0)), reverse=True)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(tenders[:300], f, ensure_ascii=False, indent=2)
+        json.dump(tenders[:350], f, ensure_ascii=False, indent=2)
 
 
 def make_id(source: str, title: str, url: str) -> str:
@@ -151,39 +148,44 @@ def detect_east_location(text: str) -> str | None:
 
 
 def should_skip_by_region(text: str) -> bool:
-    """Vyhodí západ/stred IBA vtedy, ak v texte zároveň nie je žiadna východoslovenská lokalita."""
     if detect_east_location(text):
         return False
     t = text.lower()
     return any(city in t for city in WEST_CENTRAL_CITIES)
 
 
+def parse_eur_amount(text: str) -> float:
+    m = re.search(r"(\d[\d\s\xa0]{1,12}(?:,\d{1,2})?)\s*€", text)
+    if not m:
+        return 0.0
+    cleaned = m.group(1).replace(" ", "").replace("\xa0", "").replace(",", ".")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return 0.0
+
+
 def extract_deadline(text: str) -> str:
     m = re.search(r"(\d{1,2}\.\s*\d{1,2}\.\s*202\d(?:\s+\d{1,2}:\d{2})?)", text)
-    return m.group(1) if m else "Podľa portálu"
+    return m.group(1) if m else "Otvorené / Podľa portálu"
 
 
 def fetch_uvo_evo() -> list:
     results = []
-    print("1/5 Sťahujem ÚVO a IS EVO (všetky relevantné CPV)...")
+    print("1/5 Sťahujem ÚVO a IS EVO (11 CPV pre elektro/slaboprúd/FTV)...")
     cpv_codes = [
-        "45310000-3",  # Elektroinštalačné práce
-        "45311000-0",  # Elektroinštalačné a montážne práce (rozvádzače, káble)
-        "45312000-7",  # Inštalácia požiarnopoplachových a zabezpečovacích systémov (EPS, EZS, CCTV)
-        "45314000-1",  # Inštalácia telekomunikačných zariadení (optika, ŠKS)
-        "45315000-8",  # Elektroinštalácia kúrenia a iných zariadení budov (MaR)
-        "45316000-5",  # Inštalácia osvetľovacích a signalizačných systémov (VO, DALI, CBS)
-        "45317000-2",  # Iné elektroinštalačné práce (bleskozvody, uzemnenie)
-        "09331200-0",  # Solárne fotovoltické moduly (FTV)
-        "45231400-9",  # Výstavba elektrického vedenia (NN prípojky)
-        "31210000-1",  # Elektrické rozvodné a riadiace zariadenia (výroba rozvádzačov)
-        "50711000-2",  # Opravy a údržba elektrických rozvodov budov (revízie, OPAOS)
+        "45310000-3", "45311000-0", "45312000-7", "45314000-1",
+        "45315000-8", "45316000-5", "45317000-2", "09331200-0",
+        "45231400-9", "31210000-1", "50711000-2"
     ]
     seen_urls = set()
+    session = requests.Session()
+    session.headers.update(HEADERS)
     for cpv in cpv_codes:
         try:
             url = f"https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek?cpv={cpv}"
-            resp = requests.get(url, timeout=20, headers=HEADERS)
+            resp = session.get(url, timeout=16)
+            time.sleep(0.4)
             if resp.status_code != 200:
                 continue
             soup = BeautifulSoup(resp.text, "html.parser")
@@ -206,83 +208,15 @@ def fetch_uvo_evo() -> list:
                         "raw_text": joined[:500],
                         "url": full_url
                     })
-        except Exception as e:
-            print(f"   Chyba ÚVO CPV {cpv}: {e}")
-    print(f"   -> ÚVO / IS EVO (po regionálnom predfiltri): {len(results)}")
-    return results
-
-
-def fetch_eks() -> list:
-    results = []
-    print("2/5 Sťahujem EKS Trhovisko...")
-    try:
-        resp = requests.get("https://www.eks.sk/VerejneZakazky", timeout=20, headers=HEADERS)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, "html.parser")
-            for a in soup.find_all("a", href=True):
-                txt = a.get_text(" ", strip=True)
-                href = a["href"]
-                if len(txt) > 12 and ("Zakazka" in href or "Detail" in href or any(k in txt.lower() for k in PRIMARY_ELECTRO)):
-                    full_url = href if href.startswith("http") else f"https://www.eks.sk{href}"
-                    results.append({
-                        "source": "EKS Trhovisko",
-                        "title": txt[:180],
-                        "raw_text": txt,
-                        "url": full_url
-                    })
-    except Exception as e:
-        print(f"   Chyba EKS: {e}")
-    print(f"   -> EKS Trhovisko: {len(results)}")
-    return results
-
-
-def fetch_ezak_east() -> list:
-    results = []
-    print("3/5 Sťahujem východoslovenské E-ZAK profily (Mesto KE, KSK, PSK, TUKE, UPJŠ, UNLP, VVS, ŽSR)...")
-    portals = [
-        ("E-ZAK Mesto Košice", "https://zakazky.kosice.sk/vz/"),
-        ("E-ZAK KSK (Košický kraj)", "https://zakazky.vucke.sk/vz/"),
-        ("E-ZAK PSK (Prešovský kraj)", "https://zakazky.po-kraj.sk/vz/"),
-        ("E-ZAK Mesto Prešov", "https://zakazky.presov.sk/vz/"),
-        ("E-ZAK TUKE", "https://zakazky.tuke.sk/vz/"),
-        ("E-ZAK UPJŠ", "https://zakazky.upjs.sk/vz/"),
-        ("E-ZAK UNLP Košice", "https://zakazky.unlp.sk/vz/"),
-        ("E-ZAK VVS", "https://zakazky.vodarne.eu/vz/"),
-        ("E-ZAK ŽSR", "https://zakazky.zsr.sk/vz/")
-    ]
-    seen = set()
-    for label, url in portals:
-        try:
-            resp = requests.get(url, timeout=18, headers=HEADERS, verify=False)
-            if resp.status_code != 200:
-                continue
-            soup = BeautifulSoup(resp.text, "html.parser")
-            base = "/".join(url.split("/")[:3])
-            for a in soup.find_all("a", href=True):
-                href = a["href"]
-                txt = a.get_text(" ", strip=True)
-                if ("contract_display" in href or "/vz0" in href or "zakazka" in href.lower()) and len(txt) > 10:
-                    full_url = href if href.startswith("http") else (f"{base}{href}" if href.startswith("/") else f"{url.rstrip('/')}/{href}")
-                    if full_url in seen:
-                        continue
-                    seen.add(full_url)
-                    loc_hint = "Košice / Východné Slovensko" if "ŽSR" not in label else ""
-                    results.append({
-                        "source": label,
-                        "title": txt[:180],
-                        "raw_text": f"{label} {loc_hint}: {txt}",
-                        "url": full_url
-                    })
-        except Exception as e:
-            print(f"   Upozornenie {label}: {e}")
-    print(f"   -> E-ZAK východ: {len(results)}")
+        except Exception:
+            continue
+    print(f"   -> ÚVO / IS EVO: {len(results)}")
     return results
 
 
 def fetch_dynamic_portals_playwright() -> list:
-    """Načíta JavaScriptom renderované portály (JOSEPHINE, eZakazky) priamo cez Chromium."""
     results = []
-    print("4/5 Sťahujem JOSEPHINE (Proebiz) a eZakazky cez prehliadač Playwright...")
+    print("2/5 Sťahujem JOSEPHINE, eZakazky a Tendernet cez prehliadač...")
     seen = set()
     try:
         with sync_playwright() as p:
@@ -290,10 +224,9 @@ def fetch_dynamic_portals_playwright() -> list:
             context = browser.new_context(user_agent=HEADERS["User-Agent"], ignore_https_errors=True)
             page = context.new_page()
 
-            # 1. JOSEPHINE SK verejné tendre
             try:
-                page.goto("https://josephine.proebiz.com/sk/public-tenders/all", timeout=30000, wait_until="domcontentloaded")
-                page.wait_for_timeout(4000)
+                page.goto("https://josephine.proebiz.com/sk/public-tenders/all", timeout=25000, wait_until="domcontentloaded")
+                page.wait_for_timeout(3500)
                 for a in page.query_selector_all("a[href]"):
                     href = a.get_attribute("href") or ""
                     txt = a.inner_text().strip()
@@ -311,12 +244,11 @@ def fetch_dynamic_portals_playwright() -> list:
                                 "url": full_url
                             })
             except Exception as e:
-                print(f"   Upozornenie JOSEPHINE Playwright: {e}")
+                print(f"   Upozornenie JOSEPHINE: {e}")
 
-            # 2. eZakazky.sk
             try:
-                page.goto("https://www.ezakazky.sk/", timeout=25000, wait_until="domcontentloaded")
-                page.wait_for_timeout(3000)
+                page.goto("https://www.ezakazky.sk/", timeout=20000, wait_until="domcontentloaded")
+                page.wait_for_timeout(2500)
                 for a in page.query_selector_all("a[href]"):
                     href = a.get_attribute("href") or ""
                     txt = a.inner_text().strip()
@@ -332,32 +264,163 @@ def fetch_dynamic_portals_playwright() -> list:
                                 "raw_text": txt,
                                 "url": full_url
                             })
-            except Exception as e:
-                print(f"   Upozornenie eZakazky: {e}")
+            except Exception:
+                pass
+
+            try:
+                page.goto("https://www.tendernet.sk/zakazky", timeout=18000, wait_until="domcontentloaded")
+                page.wait_for_timeout(2500)
+                for a in page.query_selector_all("a[href]"):
+                    href = a.get_attribute("href") or ""
+                    txt = a.inner_text().strip()
+                    if len(txt) > 12 and ("zakazk" in href.lower() or "tender" in href.lower()):
+                        full_url = href if href.startswith("http") else f"https://www.tendernet.sk/{href.lstrip('/')}"
+                        if full_url in seen:
+                            continue
+                        seen.add(full_url)
+                        if not should_skip_by_region(txt):
+                            results.append({
+                                "source": "Tendernet",
+                                "title": txt[:180],
+                                "raw_text": txt,
+                                "url": full_url
+                            })
+            except Exception:
+                pass
 
             browser.close()
     except Exception as e:
         print(f"   Chyba Playwright: {e}")
 
-    print(f"   -> JOSEPHINE + eZakazky: {len(results)}")
+    print(f"   -> JOSEPHINE + eZakazky + Tendernet: {len(results)}")
+    return results
+
+
+def fetch_crz_b2b_subcontracts() -> list:
+    results = []
+    print("3/5 Sťahujem CRZ (stavebné firmy s novými zmluvami v KE/PO pre subdodávky)...")
+    search_terms = [
+        "elektroinštalácia Košice",
+        "elektroinštalácia Prešov",
+        "rekonštrukcia Košice Zmluva o dielo",
+        "rekonštrukcia Prešov Zmluva o dielo",
+        "fotovoltika Košice",
+        "bleskozvod Košice"
+    ]
+    seen = set()
+    for term in search_terms:
+        try:
+            url = f"https://www.crz.gov.sk/2171273-sk/centralny-register-zmluv/?art_zs2=&art_predmet={requests.utils.quote(term)}&art_ico=&art_suma_zmluva_od=15000"
+            resp = requests.get(url, timeout=16, headers=HEADERS, verify=False)
+            if resp.status_code != 200:
+                continue
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for row in soup.select("table tr"):
+                cols = [c.get_text(" ", strip=True) for c in row.find_all("td")]
+                link_el = row.find("a", href=True)
+                if len(cols) >= 4 and link_el:
+                    href = link_el["href"]
+                    if "/zmluva/" not in href:
+                        continue
+                    full_url = href if href.startswith("http") else f"https://www.crz.gov.sk{href}"
+                    if full_url in seen:
+                        continue
+                    row_joined = " | ".join(cols)
+                    if should_skip_by_region(row_joined):
+                        continue
+                    amt = parse_eur_amount(row_joined)
+                    if 0 < amt < MIN_VALUE_EUR:
+                        continue
+                    seen.add(full_url)
+                    subject = link_el.get_text(" ", strip=True)[:140]
+                    results.append({
+                        "source": "CRZ – Subdodávka B2B",
+                        "title": f"[SUBDODÁVKA] {subject}",
+                        "raw_text": f"Čerstvá zmluva (víťazná stavebná firma na oslovenie): {row_joined[:450]}",
+                        "url": full_url
+                    })
+        except Exception:
+            continue
+    print(f"   -> CRZ B2B stavebné príležitosti: {len(results)}")
+    return results
+
+
+def fetch_enviroportal_investments() -> list:
+    results = []
+    print("4/5 Sťahujem Enviroportál (nové súkromné haly, FTV a stavby na Východe)...")
+    seen = set()
+    urls = [
+        "https://www.enviroportal.sk/eia/detail-zoznam?kraj=8",
+        "https://www.enviroportal.sk/eia/detail-zoznam?kraj=7",
+    ]
+    for url in urls:
+        try:
+            resp = requests.get(url, timeout=16, headers=HEADERS, verify=False)
+            if resp.status_code != 200:
+                continue
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                txt = a.get_text(" ", strip=True)
+                if "/eia/detail/" in href and len(txt) > 10:
+                    low = txt.lower()
+                    if any(k in low for k in ["hala", "park", "fotovolt", "slnečn", "obytn", "polyfunkčn", "priemyseln", "centrum", "sklad", "výrob"]):
+                        full_url = href if href.startswith("http") else f"https://www.enviroportal.sk{href}"
+                        if full_url in seen:
+                            continue
+                        seen.add(full_url)
+                        kraj_lbl = "Košický kraj" if "kraj=8" in url else "Prešovský kraj"
+                        results.append({
+                            "source": "Súkromný investor (EIA)",
+                            "title": f"[INVESTOR] {txt[:160]}",
+                            "raw_text": f"Pripravovaná súkromná investícia ({kraj_lbl}) – osloviť investora/generálneho dodávateľa: {txt}",
+                            "url": full_url
+                        })
+        except Exception:
+            continue
+    print(f"   -> Súkromné investície (Enviroportál): {len(results)}")
+    return results
+
+
+def fetch_eks() -> list:
+    results = []
+    print("5/5 Sťahujem EKS Trhovisko...")
+    try:
+        resp = requests.get("https://www.eks.sk/VerejneZakazky", timeout=16, headers=HEADERS)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for a in soup.find_all("a", href=True):
+                txt = a.get_text(" ", strip=True)
+                href = a["href"]
+                if len(txt) > 12 and ("Zakazka" in href or "Detail" in href or any(k in txt.lower() for k in PRIMARY_ELECTRO)):
+                    full_url = href if href.startswith("http") else f"https://www.eks.sk{href}"
+                    results.append({
+                        "source": "EKS Trhovisko",
+                        "title": txt[:180],
+                        "raw_text": txt,
+                        "url": full_url
+                    })
+    except Exception:
+        pass
+    print(f"   -> EKS Trhovisko: {len(results)}")
     return results
 
 
 def enrich_detail_text(item: dict) -> str:
     try:
-        resp = requests.get(item["url"], timeout=12, headers=HEADERS, verify=False)
+        resp = requests.get(item["url"], timeout=7, headers=HEADERS, verify=False)
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
             for tag in soup(["script", "style", "nav", "footer", "header"]):
                 tag.decompose()
-            return soup.get_text(" ", strip=True)[:3500]
+            return soup.get_text(" ", strip=True)[:2800]
     except Exception:
         pass
     return item["raw_text"]
 
 
 def smart_local_evaluation(batch: list[dict]) -> list[SingleEvaluation]:
-    print("Vyhodnocujem cez rozšírený lokálny technický filter HelMcore...")
+    print("Vyhodnocujem cez lokálny technický filter HelMcore...")
     evals = []
     for idx, item in enumerate(batch):
         full_txt = f"{item['title']} {item['raw_text']} {item['detail']}".lower()
@@ -369,24 +432,27 @@ def smart_local_evaluation(batch: list[dict]) -> list[SingleEvaluation]:
 
         has_primary = any(kw in full_txt for kw in PRIMARY_ELECTRO)
         has_secondary = any(kw in full_txt for kw in SECONDARY_BUILDING)
-        if not has_primary and not has_secondary:
+        is_investor = "investor" in item["source"].lower() or "crz" in item["source"].lower()
+
+        if not has_primary and not has_secondary and not is_investor:
             continue
 
-        score = 92 if has_primary else 75
+        est_val = parse_eur_amount(f"{item['raw_text']} {item['detail']}")
+        score = 92 if has_primary else 78
         adv = (
             "Priama elektro/slaboprúd/FTV zákazka v KE/PO kraji – § 23, výroba rozvádzačov, bleskozvody, EPS/EZS/optika."
             if has_primary else
-            "Stavebný projekt v KE/PO kraji – vhodná B2B príležitosť na subdodávku elektroinštalácie, rozvádzačov a EPS/EZS."
+            "B2B subdodávka pre stavebnú firmu / súkromného investora v KE/PO kraji – osloviť s ponukou bez DPH na elektro, rozvádzače a slaboprúd."
         )
         evals.append(SingleEvaluation(
             index=idx,
             is_relevant=True,
             score=score,
-            estimated_value_eur=0.0,
+            estimated_value_eur=est_val,
             location=loc,
             summary=item["raw_text"][:280],
             helmcore_advantage=adv,
-            risks="Overiť presný výkaz výmer, podmienky účasti a lehotu priamo v súťažných podkladoch.",
+            risks="Pri tendri skontrolovať lehotu; pri CRZ/EIA priamo kontaktovať víťaznú stavebnú firmu / investora s B2B ponukou.",
             deadline=extract_deadline(full_txt)
         ))
     return evals
@@ -395,31 +461,27 @@ def smart_local_evaluation(batch: list[dict]) -> list[SingleEvaluation]:
 def evaluate_batch_with_gemini(client: genai.Client, batch: list[dict]) -> list[SingleEvaluation]:
     system_prompt = """
     Si obchodný a technický analytik pre elektromontážnu firmu HelMcore s.r.o. (sídlo Košice, IČO: 57475393, platca DPH).
-    Odbornosti a oprávnenia: § 23 Vyhl. 508/2009 Z.z., VTZ elektrické, registrácia EVO, silnoprúdové elektroinštalácie,
-    NN prípojky, výroba NN rozvádzačov, bleskozvody (vrátane HVI), fotovoltika (FTV), inteligentné inštalácie (AMPIO, DALI),
-    optické siete a zváranie optiky, štruktúrovaná kabeláž (ŠKS), kamerové systémy (CCTV), videovrátniky, EZS,
-    elektrická požiarna signalizácia (EPS), hlasová signalizácia požiaru (HSP), centrálne batériové systémy (CBS) a verejné osvetlenie.
+    Odbornosti: § 23 Vyhl. 508/2009 Z.z., VTZ elektrické, EVO, silnoprúdové elektroinštalácie, NN prípojky,
+    výroba NN rozvádzačov, bleskozvody (vrátane HVI), fotovoltika (FTV), smart inštalácie (AMPIO, DALI),
+    optika a zváranie optiky, ŠKS, CCTV, videovrátniky, EZS, EPS, HSP, CBS a verejné osvetlenie.
 
     Cieľový región: Výhradne Východné Slovensko (Košice + okruh 100 km, celý Košický a Prešovský kraj).
     Minimálna hodnota: 5 000 EUR bez DPH.
 
     Pravidlá hodnotenia:
-    1. Ak je miesto realizácie mimo Košického a Prešovského kraja, nastav is_relevant = False (pozor: obstarávateľ môže mať sídlo v Bratislave, rozhoduje MIESTO REALIZÁCIE).
-    2. Ak ide len o nákup elektrickej energie (komodity), čisté asfaltovanie bez osvetlenia/prekládok NN alebo bežné tovary, nastav is_relevant = False.
-    3. Priame zákazky na elektro, rozvádzače, prípojky, bleskozvody, FTV, optiku, EPS/HSP/CBS/EZS/CCTV alebo osvetlenie v KE/PO kraji hodnoť skóre 85-98.
-    4. Väčšie stavby, haly a rekonštrukcie budov v KE/PO kraji (kde bude potrebná subdodávka elektra/slaboprúdu) hodnoť skóre 72-84.
+    1. Ak je miesto realizácie mimo Košického a Prešovského kraja, nastav is_relevant = False (rozhoduje miesto stavby, nie sídlo firmy).
+    2. Ak ide len o nákup elektriny ako komodity, bežné tovary alebo opravy ciest bez osvetlenia/NN prekládok, nastav is_relevant = False.
+    3. Priame verejné zákazky na elektro, rozvádzače, prípojky, bleskozvody, FTV, optiku, EPS/HSP/CBS/EZS/CCTV v KE/PO kraji hodnoť skóre 86-98.
+    4. Záznamy zo zdroja "CRZ – Subdodávka B2B" a "Súkromný investor (EIA)" alebo veľké stavby budov/hál v KE/PO kraji hodnoť skóre 74-85 a v summary uveď názov víťaznej stavebnej firmy alebo investora na oslovenie.
     """
 
     entries = [f"[{idx}] ZDROJ: {item['source']} | NÁZOV: {item['title']} | TEXT: {item['detail']}" for idx, item in enumerate(batch)]
-    user_prompt = "Vyhodnoť nasledujúce zákazky pre HelMcore s.r.o.:\n\n" + "\n---\n".join(entries)
+    user_prompt = "Vyhodnoť nasledujúce príležitosti pre HelMcore s.r.o.:\n\n" + "\n---\n".join(entries)
 
-    # Kaskáda reálnych modelov pri preťažení (503)
     models_to_try = [
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-2.5-pro",
-        "gemini-2.5-flash"
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-pro-preview"
     ]
 
     for attempt, model_name in enumerate(models_to_try):
@@ -438,9 +500,10 @@ def evaluate_batch_with_gemini(client: genai.Client, batch: list[dict]) -> list[
             print(f"AI analýza úspešná cez {model_name}.")
             return parsed.items
         except Exception as e:
-            wait_sec = 10 * (attempt + 1)
-            print(f"Pokus {attempt + 1}/5 ({model_name}) zlyhal: {e} -> čakám {wait_sec}s")
-            time.sleep(wait_sec)
+            err_str = str(e)
+            print(f"Pokus {attempt + 1}/{len(models_to_try)} ({model_name}) zlyhal: {err_str[:120]}")
+            if "503" in err_str or "429" in err_str:
+                time.sleep(4)
 
     return smart_local_evaluation(batch)
 
@@ -455,9 +518,8 @@ def send_telegram_notification(tender: dict):
         f"📍 *Lokalita:* {tender['location']}\n"
         f"💶 *Hodnota:* {val_str}\n"
         f"⏳ *Termín:* {tender['deadline']}\n"
-        f"🛠 *Rozsah:* {tender['summary']}\n"
-        f"✅ *Výhoda HelMcore:* {tender['helmcore_advantage']}\n"
-        f"⚠️ *Riziká:* {tender['risks']}\n\n"
+        f"🛠 *Rozsah / Kontakt:* {tender['summary']}\n"
+        f"✅ *Výhoda HelMcore:* {tender['helmcore_advantage']}\n\n"
         f"🔗 [Otvoriť zdroj]({tender['url']})"
     )
     try:
@@ -471,17 +533,18 @@ def send_telegram_notification(tender: dict):
 
 
 def main():
+    print("=== HELMCORE RADAR V3 (BEZ E-ZAK / GEMINI 3.5) ===")
     sync_logo_to_docs()
     client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
     existing = load_existing_tenders()
     existing_ids = {t["id"] for t in existing}
 
-    # Zber zo všetkých portálov bez predčasného odrezania CPV kategórií
     sources_lists = [
-        fetch_uvo_evo()[:60],
-        fetch_ezak_east()[:50],
-        fetch_dynamic_portals_playwright()[:40],
-        fetch_eks()[:25],
+        fetch_uvo_evo()[:40],
+        fetch_dynamic_portals_playwright()[:35],
+        fetch_crz_b2b_subcontracts()[:25],
+        fetch_enviroportal_investments()[:15],
+        fetch_eks()[:20],
     ]
 
     filtered_candidates = []
@@ -491,7 +554,7 @@ def main():
             if c["url"] in seen_urls:
                 continue
             seen_urls.add(c["url"])
-            tid = make_id(c["source"], c["title"], c["url"])
+            tid =MakeId = make_id(c["source"], c["title"], c["url"])
             if tid in existing_ids:
                 continue
             if should_skip_by_region(c["title"] + " " + c["raw_text"]):
@@ -499,15 +562,15 @@ def main():
             c["id"] = tid
             filtered_candidates.append(c)
 
-    print(f"5/5 Vybraných {len(filtered_candidates)} nových kandidátov na hĺbkovú kontrolu.")
+    print(f"Vybraných {len(filtered_candidates)} nových kandidátov na hĺbkovú kontrolu.")
 
-    to_analyze = filtered_candidates[:80]
+    to_analyze = filtered_candidates[:50]
     for item in to_analyze:
         item["detail"] = enrich_detail_text(item)
 
     new_count = 0
-    for start in range(0, len(to_analyze), 20):
-        batch = to_analyze[start:start + 20]
+    for start in range(0, len(to_analyze), 25):
+        batch = to_analyze[start:start + 25]
         evals = evaluate_batch_with_gemini(client, batch) if client else smart_local_evaluation(batch)
         for ev in evals:
             if 0 <= ev.index < len(batch) and ev.is_relevant and ev.score >= 70:
