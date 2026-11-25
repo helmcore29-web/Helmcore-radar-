@@ -15,9 +15,12 @@ from pydantic import BaseModel
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# --- NASTAVENIA PRE HELMCORE S.R.O. (VERZIA V3) ---
+# --- NASTAVENIA PRE HELMCORE S.R.O. (VERZIA V4 - AUTO CLEAN) ---
 MIN_VALUE_EUR = 5000.0
 DATA_FILE = "docs/tenders.json"
+SEEN_FILE = "docs/seen_ids.json"
+MAX_AGE_DAYS = 14  # Automatické vymazanie ponúk starších ako 14 dní (môžeš zmeniť na 7)
+
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -116,6 +119,50 @@ def sync_logo_to_docs():
         shutil.copy2("logo.png", "docs/logo.png")
 
 
+def load_seen_ids() -> set:
+    if os.path.exists(SEEN_FILE):
+        try:
+            with open(SEEN_FILE, "r", encoding="utf-8") as f:
+                return set(json.load(f))
+        except Exception:
+            return set()
+    return set()
+
+
+def save_seen_ids(seen_ids: set):
+    os.makedirs(os.path.dirname(SEEN_FILE), exist_ok=True)
+    with open(SEEN_FILE, "w", encoding="utf-8") as f:
+        json.dump(sorted(list(seen_ids))[-5000:], f)
+
+
+def is_tender_expired(item: dict) -> bool:
+    now_utc = datetime.now(timezone.utc)
+
+    # 1. Kontrola dátumu uzávierky (ak je uvedený konkrétny dátum a už prešiel -> zmazať)
+    dl = item.get("deadline", "")
+    m = re.search(r"(\d{1,2})\.\s*(\d{1,2})\.\s*(202\d)", dl)
+    if m:
+        try:
+            day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            deadline_dt = datetime(year, month, day, 23, 59, tzinfo=timezone.utc)
+            if deadline_dt < now_utc:
+                return True
+        except ValueError:
+            pass
+
+    # 2. Kontrola veku ponuky v systéme (staršie ako MAX_AGE_DAYS -> zmazať)
+    found_str = item.get("found_at", "")
+    if found_str:
+        try:
+            found_dt = datetime.strptime(found_str, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+            if (now_utc - found_dt).days > MAX_AGE_DAYS:
+                return True
+        except ValueError:
+            pass
+
+    return False
+
+
 def load_existing_tenders() -> list:
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -129,9 +176,13 @@ def load_existing_tenders() -> list:
 
 def save_tenders(tenders: list):
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-    tenders.sort(key=lambda x: (x.get("found_at", ""), x.get("score", 0)), reverse=True)
+    active_tenders = [t for t in tenders if not is_tender_expired(t)]
+    removed = len(tenders) - len(active_tenders)
+    if removed > 0:
+        print(f"🧹 Automatické čistenie: odstránených {removed} starých/ukončených ponúk.")
+    active_tenders.sort(key=lambda x: (x.get("found_at", ""), x.get("score", 0)), reverse=True)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(tenders[:350], f, ensure_ascii=False, indent=2)
+        json.dump(active_tenders[:200], f, ensure_ascii=False, indent=2)
 
 
 def make_id(source: str, title: str, url: str) -> str:
@@ -479,9 +530,10 @@ def evaluate_batch_with_gemini(client: genai.Client, batch: list[dict]) -> list[
     user_prompt = "Vyhodnoť nasledujúce príležitosti pre HelMcore s.r.o.:\n\n" + "\n---\n".join(entries)
 
     models_to_try = [
-        "gemini-3.5-flash",
+        "gemini-3.0-flash",
         "gemini-3.5-flash-lite",
-        "gemini-3.1-pro-preview"
+        "gemini-3.1-pro-preview",
+        "gemini-3.5-flash"
     ]
 
     for attempt, model_name in enumerate(models_to_try):
@@ -533,11 +585,11 @@ def send_telegram_notification(tender: dict):
 
 
 def main():
-    print("=== HELMCORE RADAR V3 (BEZ E-ZAK / GEMINI 3.5) ===")
+    print("=== HELMCORE RADAR V4 (AUTO-CLEAN + B2B + GEMINI 3) ===")
     sync_logo_to_docs()
     client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
     existing = load_existing_tenders()
-    existing_ids = {t["id"] for t in existing}
+    existing_ids = load_seen_ids() | {t["id"] for t in existing}
 
     sources_lists = [
         fetch_uvo_evo()[:40],
@@ -554,7 +606,7 @@ def main():
             if c["url"] in seen_urls:
                 continue
             seen_urls.add(c["url"])
-            tid =MakeId = make_id(c["source"], c["title"], c["url"])
+            tid = make_id(c["source"], c["title"], c["url"])
             if tid in existing_ids:
                 continue
             if should_skip_by_region(c["title"] + " " + c["raw_text"]):
@@ -597,6 +649,7 @@ def main():
                 send_telegram_notification(record)
 
     save_tenders(existing)
+    save_seen_ids(existing_ids)
     print(f"Hotovo. Pridaných {new_count} nových príležitostí.")
 
 
