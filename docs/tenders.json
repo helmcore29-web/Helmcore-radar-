@@ -1,5 +1,33 @@
 [
   {
+    "id": "6fe574ac4bdf4c02",
+    "source": "IS EVO",
+    "title": "Zníženie energetickej náročnosti budovy, MŠ Kalinovská 9, Košice",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/565726?cHash=3b1686cace10f61ce5b3e6f040cc3f0d",
+    "score": 92,
+    "estimated_value_eur": 150000.0,
+    "location": "Košice",
+    "summary": "Priama verejná zákazka na zníženie energetickej náročnosti MŠ Kalinovská 9 v Košiciach zahŕňajúca elektroinštalačné práce v Košickom kraji.",
+    "helmcore_advantage": "Lokálne pôsobenie v Košiciach, skúsenosti s elektroinštaláciami a energetickými opatreniami budov.",
+    "risks": "Koordinačné riziká so stavebnými a tepelnoizolačnými prácami iných dodávateľov.",
+    "deadline": "2026-12-31",
+    "found_at": "2026-11-27 14:35"
+  },
+  {
+    "id": "13419f3a251b4116",
+    "source": "CRZ – Subdodávka B2B",
+    "title": "[SUBDODÁVKA] Zmluva o dielo č. 2026/127 – Prešov, kasárne SNP – rekonštrukcia vonkajšieho vodovodu – R",
+    "url": "https://www.crz.gov.sk/zmluva/12364406/",
+    "score": 78,
+    "estimated_value_eur": 50000.0,
+    "location": "Prešov",
+    "summary": "Subdodávka pre dielo v kasárňach SNP v Prešove. Hlavný investor / stavebná firma na oslovenie: Ministerstvo obrany SR / dodávateľ stavby vodovodu s väzbami na elektro.",
+    "helmcore_advantage": "Silná pozícia v Prešovskom kraji, skúsenosti s VTZ elektrické a prípojkami v armádnych objektoch.",
+    "risks": "Primárne ide o vodovod, nutné koordinovať elektro-práce ako subdodávku.",
+    "deadline": "2026-12-31",
+    "found_at": "2026-11-27 14:35"
+  },
+  {
     "id": "3707d759729eed0e",
     "source": "CRZ – Subdodávka B2B",
     "title": "[SUBDODÁVKA] Zmluva o dielo pre projekt: Vybudovanie a rekonštrukcia cykloinfraštruktúry na vybraných úsekoch cyklotrás v okrese Prešov (Veľký Šariš)",
