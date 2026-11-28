@@ -1,5 +1,19 @@
 [
   {
+    "id": "f5fc98497162ca0a",
+    "source": "ÚVO Vestník",
+    "title": "Margecany – Červená Skala, KRŽZ km 87,437 – 92,272, dĺ. 4,835km",
+    "url": "https://www.uvo.gov.sk/vyhladavanie/vyhladavanie-zakaziek/detail/499774?cHash=30dd35fdf6810c18cdc5593d9f24cbe1",
+    "score": 86,
+    "estimated_value_eur": 500000.0,
+    "location": "Margecany – Červená Skala (Košický/Banskobystrický kraj)",
+    "summary": "Železničná stavba Margecany – Červená Skala, zahŕňajúca silnoprúdy, vedenia, osvetlenie a zabezpečovaciu signalizáciu.",
+    "helmcore_advantage": "Ide o regionálnu zákazku na východnom Slovensku (Margecany), ideálna pre naše silnoprúdové a inžinierske kapacity.",
+    "risks": "Zložité koordinačné práce so ŽSR.",
+    "deadline": "2024-03-28",
+    "found_at": "2026-11-28 14:25"
+  },
+  {
     "id": "04e0556773f80484",
     "source": "CRZ – Subdodávka B2B",
     "title": "[SUBDODÁVKA] Zmluva o dielo  \"Rekonštrukcia komunikácií v meste Košice\"",
